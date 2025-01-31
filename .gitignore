@@ -1,3 +1,6 @@
+# Other files and directories that I don't want to add to git
+data/
+
 # History files
 .Rhistory
 .Rapp.history
