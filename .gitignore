@@ -1,6 +1,6 @@
 # Other files and directories that I don't want to add to git
 data/
-
+.DS_Store
 # History files
 .Rhistory
 .Rapp.history
