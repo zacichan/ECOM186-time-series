@@ -86,11 +86,8 @@ data_ts_d <- na.omit(data_ts_d)
 
 #Convert to long format 
 data_ts_d <- data_ts_d %>%
-  mutate(
-    Year = paste(colnames(data_ts_d)[4:ncol(data_ts_d)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_d[, 4:ncol(data_ts_d)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_d, "data_ts_d.csv", row.names = FALSE)
 
@@ -171,17 +168,12 @@ data_ts_nd <- na.omit(data_ts_nd)
 
 #Convert to long format 
 data_ts_nd <- data_ts_nd %>%
-  mutate(
-    Year = paste(colnames(data_ts_nd)[4:ncol(data_ts_nd)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_nd[, 4:ncol(data_ts_nd)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_nd, "data_ts_nd.csv", row.names = FALSE)
 
-
 #Mean consumption all meters 
-
 columns_keep <- c("Code", "Country or region", "Local authority", "Mean consumption\r\n(kWh per meter):\r\nAll meters",
                   "Mean consumption\r\n(kWh per meter):\r\nAll meters\r\n", "Mean consumption\r\n(kWh per meter):\r\nAll meters")
 
@@ -210,7 +202,6 @@ filter(!`Local authority` %in% c("Unallocated", "All local authorities", "All lo
                                     
   ))
 
-head(data_combined)
 # Combine local authority rows with Welsh name included 
 data_combined <- data_combined %>%
   mutate(`Local authority` = str_extract(`Local authority`, "^[^/]+") %>% str_trim())
@@ -257,11 +248,8 @@ data_ts_am <- na.omit(data_ts_am)
 
 #Convert to long format 
 data_ts_am <- data_ts_am %>%
-  mutate(
-    Year = paste(colnames(data_ts_am)[4:ncol(data_ts_am)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_am[, 4:ncol(data_ts_am)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_am, "data_ts_am.csv", row.names = FALSE)
 

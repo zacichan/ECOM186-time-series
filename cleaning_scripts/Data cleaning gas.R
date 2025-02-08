@@ -86,11 +86,8 @@ data_ts_dg <- na.omit(data_ts_dg)
 
 #Convert to long format 
 data_ts_dg <- data_ts_dg %>%
-  mutate(
-    Year = paste(colnames(data_ts_dg)[4:ncol(data_ts_dg)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_dg[, 4:ncol(data_ts_dg)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_dg, "data_ts_dg.csv", row.names = FALSE)
 
@@ -171,11 +168,8 @@ data_ts_ndg <- na.omit(data_ts_ndg)
 
 #Convert to long format 
 data_ts_ndg <- data_ts_ndg %>%
-  mutate(
-    Year = paste(colnames(data_ts_ndg)[4:ncol(data_ts_ndg)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_ndg[, 4:ncol(data_ts_ndg)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_ndg, "data_ts_ndg.csv", row.names = FALSE)
 
@@ -256,10 +250,8 @@ data_ts_amg <- na.omit(data_ts_amg)
 
 #Convert to long format 
 data_ts_amg <- data_ts_amg %>%
-  mutate(
-    Year = paste(colnames(data_ts_amg)[4:ncol(data_ts_amg)], collapse = ","),  # Concatenate year names
-    Value = apply(data_ts_amg[, 4:ncol(data_ts_amg)], 1, function(x) paste(x, collapse = ","))  # Concatenate values
-  ) %>%
-  select(`Local authority`, Code, `Country or region`, Year, Value)  # Keep required columns
+  pivot_longer(cols = starts_with("20"), names_to = "Year", values_to = "Value") %>%
+  select(`Local authority`, Code, `Country or region`, Year, Value)
 
 write.csv(data_ts_amg, "data_ts_amg.csv", row.names = FALSE)
+
