@@ -1,3 +1,10 @@
-# Information about these files
+# Information about data files
 
-Put some info here.
+| Dataset    | Info                    |
+|------------|-------------------------|
+| data_ts_am | all meters electricity  |
+|            |                         |
+|            |                         |
+|            |                         |
+|            |                         |
+|            |                         |
