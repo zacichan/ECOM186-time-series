@@ -2,10 +2,7 @@ library(readr)
 library(tidyverse)
 library(stochvol)
 
-setwd("/Users/charlotte/ECOM186-time-series")
-
 #ALL METERS CONSUMPTION
-data_ts_am <- ("/Users/charlotte/ECOM186-time-series/final_data/data_ts_am")
 data_ts_am <- read_csv("final_data/data_ts_am.csv")
 
 #Sort data by time within each local authority
@@ -26,13 +23,12 @@ pp <- pred$y[[1]]
 
 data_latent <- draws$latent
 h <- apply(data_latent[[1]],2,mean)
-h<-ts(exp(h), start=min(data_ts_am$Year),frequency = 1)
+h <- ts(exp(h), start=min(data_ts_am$Year),frequency = 1)
 
 return(list(model=draws, volatility=h, prediction=pp))
 }
 
 #Apply function to each local authority 
-
 svol_results <- data_ts_am %>%
   group_by(`Local authority`) %>%
   group_split() %>%
@@ -41,6 +37,18 @@ svol_results <- data_ts_am %>%
 
 # Example: Plot volatility for one local authority
 plot.ts(svol_results[["Westminster"]]$volatility, main = "Stochastic Volatility Electricity (Westminster)", ylab = "Volatility")
+
+# Create a data frame to store the results
+volatility_am <- data.frame(
+  LAD = rep(names(svol_results), each = length(svol_results[[1]]$volatility)), 
+  Year = unlist(lapply(svol_results, function(x) seq(from = min(data_ts_am$Year), length.out = length(x$volatility)))),  
+  volatility = unlist(lapply(svol_results, function(x) x$volatility)),
+  stringsAsFactors = FALSE,
+  row.names = NULL  # Ensures no row names are set
+)
+
+# Write to CSV
+write.csv(volatility_am, "volatility_am.csv", row.names = FALSE)
 
 #DOMESTIC CONSUMPTION 
 data_ts_d <- ("/Users/charlotte/ECOM186-time-series/final_data/data_ts_d")
@@ -80,6 +88,18 @@ svol_results_d <- data_ts_d %>%
 # Example: Plot volatility for one local authority
 plot.ts(svol_results_d[["Westminster"]]$volatility, main = "Stochastic Volatility Domestic Electricity (Westminster)", ylab = "Volatility")
 
+# Create a data frame to store the results
+volatility_d <- data.frame(
+  LAD = rep(names(svol_results_d), each = length(svol_results_d[[1]]$volatility)), 
+  Year = unlist(lapply(svol_results_d, function(x) seq(from = min(data_ts_d$Year), length.out = length(x$volatility)))),  
+  volatility = unlist(lapply(svol_results_d, function(x) x$volatility)),
+  stringsAsFactors = FALSE,
+  row.names = NULL  # Ensures no row names are set
+)
+
+# Write to CSV
+write.csv(volatility_d, "volatility_d.csv", row.names = FALSE)
+
 #NON-DOMESTIC CONSUMPTION
 data_ts_nd <- ("/Users/charlotte/ECOM186-time-series/final_data/data_ts_nd")
 data_ts_nd <- read_csv("final_data/data_ts_nd.csv")
@@ -118,6 +138,16 @@ svol_results_nd <- data_ts_nd %>%
 # Example: Plot volatility for one local authority
 plot.ts(svol_results_nd[["Westminster"]]$volatility, main = "Stochastic Volatility Industry Electricity (Westminster)", ylab = "Volatility")
 
+# Create a data frame to store the results
+volatility_nd <- data.frame(
+  LAD = rep(names(svol_results_nd), each = length(svol_results_nd[[1]]$volatility)), 
+  Year = unlist(lapply(svol_results_nd, function(x) seq(from = min(data_ts_nd$Year), length.out = length(x$volatility)))),  
+  volatility = unlist(lapply(svol_results_nd, function(x) x$volatility)),
+  stringsAsFactors = FALSE,
+  row.names = NULL  # Ensures no row names are set
+)
 
+# Write to CSV
+write.csv(volatility_nd, "volatility_nd.csv", row.names = FALSE)
 
 
