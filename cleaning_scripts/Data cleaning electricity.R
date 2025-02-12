@@ -7,7 +7,7 @@ library(stringr)
 install.packages("stringdist")
 library(stringdist)
 
-elec_data <- ("/Users/charlotte/ECOM186-time-series/data/elec.cons.xlsx")
+elec_data <- ("/Users/charlottekneebone/Development/ECOM186-time-series/data/elec.cons.xlsx")
 sheets <- excel_sheets(elec_data)[-1]
 
 #Mean Domestic Consumption
@@ -73,13 +73,30 @@ data_combined <- data_combined %>%
 data_ts_d <- data_combined %>%
   pivot_wider(names_from = Year, values_from = "Mean Domestic Consumption")
 
-# Identify Local Authorities with missing values in any year
-#incomplete_local_authorities_ts <- data_ts_d %>%
-#  filter(if_any(where(is.numeric), is.na)) %>%
-#  select(`Local authority`)
+#################### Identify Local Authorities with missing values in any year#####################
+incomplete_local_authorities_ts <- data_ts_d %>%
+  filter(if_any(where(is.numeric), is.na)) %>%
+  select(`Local authority`)
+
+incomplete_data_ts <- data_ts_d %>%
+  semi_join(incomplete_local_authorities_ts, by = "Local authority")
+
+# Pivot data to long format
+incomplete_data_long <- incomplete_data_ts %>%
+  pivot_longer(cols = where(is.numeric), names_to = "Year", values_to = "Value")
+
+# Calculate overall summary statistics
+overall_summary_stats_d <- incomplete_data_long %>%
+  summarise(
+    mean = mean(Value, na.rm = TRUE),
+    sd = sd(Value, na.rm = TRUE),
+    min = min(Value, na.rm = TRUE),
+    max = max(Value, na.rm = TRUE)
+  )
+####################################################################################################
 
 # View the list
-# print(incomplete_local_authorities_ts)
+print(incomplete_local_authorities_ts)
 
 #Remove incomplete data rows 
 data_ts_d <- na.omit(data_ts_d)
@@ -155,13 +172,27 @@ data_combined <- data_combined %>%
 data_ts_nd <- data_combined %>%
   pivot_wider(names_from = Year, values_from = "Mean Non-Domestic Consumption")
 
-# Identify Local Authorities with missing values in any year
-#incomplete_local_authorities_ts <- data_ts_nd %>%
-#  filter(if_any(where(is.numeric), is.na)) %>%
-#  select(`Local authority`)
+#################### Identify Local Authorities with missing values in any year#####################
+incomplete_local_authorities_ts <- data_ts_nd %>%
+  filter(if_any(where(is.numeric), is.na)) %>%
+  select(`Local authority`)
 
-# View the list
-#print(incomplete_local_authorities_ts)
+incomplete_data_ts <- data_ts_nd %>%
+  semi_join(incomplete_local_authorities_ts, by = "Local authority")
+
+# Pivot data to long format
+incomplete_data_long <- incomplete_data_ts %>%
+  pivot_longer(cols = where(is.numeric), names_to = "Year", values_to = "Value")
+
+# Calculate overall summary statistics
+overall_summary_stats_nd <- incomplete_data_long %>%
+  summarise(
+    mean = mean(Value, na.rm = TRUE),
+    sd = sd(Value, na.rm = TRUE),
+    min = min(Value, na.rm = TRUE),
+    max = max(Value, na.rm = TRUE)
+  )
+####################################################################################################
 
 #Remove incomplete data rows 
 data_ts_nd <- na.omit(data_ts_nd)
@@ -235,13 +266,27 @@ data_combined <- data_combined %>%
 data_ts_am <- data_combined %>%
   pivot_wider(names_from = Year, values_from = "Mean Consumption All Meters")
 
-# Identify Local Authorities with missing values in any year
-#incomplete_local_authorities_ts <- data_ts_d %>%
-#  filter(if_any(where(is.numeric), is.na)) %>%
-#  select(`Local authority`)
+#################### Identify Local Authorities with missing values in any year#####################
+incomplete_local_authorities_ts <- data_ts_am %>%
+  filter(if_any(where(is.numeric), is.na)) %>%
+  select(`Local authority`)
 
-# View the list
-# print(incomplete_local_authorities_ts)
+incomplete_data_ts <- data_ts_am %>%
+  semi_join(incomplete_local_authorities_ts, by = "Local authority")
+
+# Pivot data to long format
+incomplete_data_long <- incomplete_data_ts %>%
+  pivot_longer(cols = where(is.numeric), names_to = "Year", values_to = "Value")
+
+# Calculate overall summary statistics
+overall_summary_stats_am <- incomplete_data_long %>%
+  summarise(
+    mean = mean(Value, na.rm = TRUE),
+    sd = sd(Value, na.rm = TRUE),
+    min = min(Value, na.rm = TRUE),
+    max = max(Value, na.rm = TRUE)
+  )
+####################################################################################################
 
 #Remove incomplete data rows 
 data_ts_am <- na.omit(data_ts_am)
