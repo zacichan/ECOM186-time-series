@@ -266,7 +266,7 @@ data_combined <- data_combined %>%
 data_ts_am <- data_combined %>%
   pivot_wider(names_from = Year, values_from = "Mean Consumption All Meters")
 
-#################### Identify Local Authorities with missing values in any year#####################
+####################Identify Local Authorities with missing values in any year#####################
 incomplete_local_authorities_ts <- data_ts_am %>%
   filter(if_any(where(is.numeric), is.na)) %>%
   select(`Local authority`)
