@@ -26,3 +26,5 @@
 |  | v_p_i_g | Price volatility industrial gas |
 |  | v_p_d_e | Price volatility domestic electricity |
 |  | v_p_i_e | Price volatility industrial electricity |
+| Rural Urban Classifications: | Rural Urban Classification 2011 (3 fold) | The classification initially uses the proportion of the population that resides in rural areas (or within hub towns) to distinguish the rural authority areas. If rural population is insufficient to classify the geography as rural, the type of urban settlement where greatest proportion of the population resides is used to determine the urban classification of those authorities. |
+|  | Rural Urban Classification 2011 (6 fold) |  |
