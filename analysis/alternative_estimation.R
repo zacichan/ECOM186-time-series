@@ -42,7 +42,7 @@ prepare_pvar_data <- function(data) {
     ) %>%
     # Remove missing values
     drop_na()
-  
+
   return(pvar_data)
 }
 
@@ -50,66 +50,71 @@ prepare_pvar_data <- function(data) {
 estimate_basic_pvar <- function(data, rural_urban_group = NULL) {
   # If group is specified, filter data
   if (!is.null(rural_urban_group)) {
-    data <- data[data$rural_urban == rural_urban_group,]
+    data <- data[data$rural_urban == rural_urban_group, ]
   }
-  
+
   # Keep only variables needed for the model
   model_data <- data %>%
     select(id, year, volatility, price, consumption)
-  
+
   # Estimate panel VAR with fixed effects
-  tryCatch({
-    model <- pvarfeols(
-      dependent_vars = c("volatility", "price", "consumption"),
-      lags = 1,
-      transformation = "demean",
-      data = model_data,
-      panel_identifier = c("id", "year")
-    )
-    return(model)
-  }, error = function(e) {
-    message("Error in model estimation: ", e$message)
-    return(NULL)
-  })
+  tryCatch(
+    {
+      model <- pvarfeols(
+        dependent_vars = c("volatility", "price", "consumption"),
+        lags = 1,
+        transformation = "demean",
+        data = model_data,
+        panel_identifier = c("id", "year")
+      )
+      return(model)
+    },
+    error = function(e) {
+      message("Error in model estimation: ", e$message)
+      return(NULL)
+    }
+  )
 }
 
 #### Visualisation ----
 
 # Function to create IRF plots with confidence intervals
-plot_irf <- function(irf_object, shock_var, response_var, 
+plot_irf <- function(irf_object, shock_var, response_var,
                      ci_lower = NULL, ci_upper = NULL, title = NULL) {
   # Get IRF values
   irf_values <- irf_object[[shock_var]][, which(colnames(irf_object[[shock_var]]) == response_var)]
   n_periods <- length(irf_values)
-  
+
   # Create data frame for plotting
   plot_data <- data.frame(
-    period = 0:(n_periods-1),
+    period = 0:(n_periods - 1),
     irf = irf_values
   )
-  
+
   # Add confidence intervals if provided
-  if(!is.null(ci_lower) && !is.null(ci_upper)) {
+  if (!is.null(ci_lower) && !is.null(ci_upper)) {
     plot_data$ci_lower <- ci_lower[[shock_var]][, which(colnames(ci_lower[[shock_var]]) == response_var)]
     plot_data$ci_upper <- ci_upper[[shock_var]][, which(colnames(ci_upper[[shock_var]]) == response_var)]
   }
-  
+
   # Create base plot
   p <- ggplot(plot_data, aes(x = period, y = irf)) +
     geom_line(size = 1) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "red")
-  
+
   # Add confidence intervals if available
-  if(!is.null(ci_lower) && !is.null(ci_upper)) {
-    p <- p + geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), 
-                         alpha = 0.2, fill = "blue")
+  if (!is.null(ci_lower) && !is.null(ci_upper)) {
+    p <- p + geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper),
+      alpha = 0.2, fill = "blue"
+    )
   }
-  
+
   # Add labels and theme
   p <- p + labs(
-    title = ifelse(is.null(title), 
-                   paste("Response of", response_var, "to", shock_var, "shock"),
-                   title),
+    title = ifelse(is.null(title),
+      paste("Response of", response_var, "to", shock_var, "shock"),
+      title
+    ),
     x = "Periods",
     y = "Response"
   ) +
@@ -118,50 +123,53 @@ plot_irf <- function(irf_object, shock_var, response_var,
       plot.title = element_text(hjust = 0.5),
       panel.grid.minor = element_blank()
     )
-  
+
   return(p)
 }
 
 # Function to compare IRFs across models with confidence intervals
-compare_irfs <- function(model1_irf, model2_irf, shock_var, response_var, 
+compare_irfs <- function(model1_irf, model2_irf, shock_var, response_var,
                          model1_ci = NULL, model2_ci = NULL,
                          model1_name = "Model 1", model2_name = "Model 2") {
-  
   # Get IRF values for both models
   irf1_values <- model1_irf[[shock_var]][, which(colnames(model1_irf[[shock_var]]) == response_var)]
   irf2_values <- model2_irf[[shock_var]][, which(colnames(model2_irf[[shock_var]]) == response_var)]
   n_periods <- length(irf1_values)
-  
+
   # Create data frame for plotting
   plot_data <- data.frame(
-    period = rep(0:(n_periods-1), 2),
+    period = rep(0:(n_periods - 1), 2),
     irf = c(irf1_values, irf2_values),
-    model = factor(c(rep(model1_name, length(irf1_values)),
-                     rep(model2_name, length(irf2_values))))
+    model = factor(c(
+      rep(model1_name, length(irf1_values)),
+      rep(model2_name, length(irf2_values))
+    ))
   )
-  
+
   # Add confidence intervals if provided
-  if(!is.null(model1_ci) && !is.null(model2_ci)) {
+  if (!is.null(model1_ci) && !is.null(model2_ci)) {
     ci1_lower <- model1_ci$Lower[[shock_var]][, which(colnames(model1_ci$Lower[[shock_var]]) == response_var)]
     ci1_upper <- model1_ci$Upper[[shock_var]][, which(colnames(model1_ci$Upper[[shock_var]]) == response_var)]
     ci2_lower <- model2_ci$Lower[[shock_var]][, which(colnames(model2_ci$Lower[[shock_var]]) == response_var)]
     ci2_upper <- model2_ci$Upper[[shock_var]][, which(colnames(model2_ci$Upper[[shock_var]]) == response_var)]
-    
+
     plot_data$ci_lower <- c(ci1_lower, ci2_lower)
     plot_data$ci_upper <- c(ci1_upper, ci2_upper)
   }
-  
+
   # Create base plot
   p <- ggplot(plot_data, aes(x = period, y = irf, color = model)) +
     geom_line(size = 1) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "black")
-  
+
   # Add confidence intervals if available
-  if(!is.null(model1_ci) && !is.null(model2_ci)) {
-    p <- p + geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper, 
-                             fill = model), alpha = 0.2)
+  if (!is.null(model1_ci) && !is.null(model2_ci)) {
+    p <- p + geom_ribbon(aes(
+      ymin = ci_lower, ymax = ci_upper,
+      fill = model
+    ), alpha = 0.2)
   }
-  
+
   # Add labels and theme
   p <- p + labs(
     title = paste("Response of", response_var, "to", shock_var, "shock"),
@@ -176,7 +184,7 @@ compare_irfs <- function(model1_irf, model2_irf, shock_var, response_var,
       panel.grid.minor = element_blank(),
       legend.position = "bottom"
     )
-  
+
   return(p)
 }
 
@@ -197,54 +205,61 @@ all_areas_plots <- analyze_model_results(all_areas_results, "Full Sample")
 irf_results <- oirf(all_areas_model, n.ahead = 20)
 
 # Calculate confidence intervals using bootstrap
-ci_results <- bootstrap_irf(all_areas_model, 
-                            typeof_irf = "OIRF",
-                            n.ahead = 20,
-                            nof_Nstar_draws = 500,
-                            confidence.band = 0.95,
-                            mc.cores = parallel::detectCores() - 1)
+ci_results <- bootstrap_irf(all_areas_model,
+  typeof_irf = "OIRF",
+  n.ahead = 20,
+  nof_Nstar_draws = 500,
+  confidence.band = 0.95,
+  mc.cores = parallel::detectCores() - 1
+)
 
 # Create plot with confidence intervals
-plot_irf(irf_results, "price", "consumption",
-         ci_results$Lower, ci_results$Upper)
+plot_irf(
+  irf_results, "price", "consumption",
+  ci_results$Lower, ci_results$Upper
+)
 
 # Model Comparison: Urban vs Rural
 
 # First calculate IRFs for both models
 irf_model1 <- oirf(urban_model, n.ahead = 10)
-irf_model2 <- oirf(rural_model, n.ahead = 10)  
+irf_model2 <- oirf(rural_model, n.ahead = 10)
 
 # Calculate confidence intervals for both models if you haven't already
-ci_model1 <- bootstrap_irf(urban_model, 
-                           typeof_irf = "OIRF",
-                           n.ahead = 10,
-                           nof_Nstar_draws = 500,
-                           confidence.band = 0.95,
-                           mc.cores = parallel::detectCores() - 1)
+ci_model1 <- bootstrap_irf(urban_model,
+  typeof_irf = "OIRF",
+  n.ahead = 10,
+  nof_Nstar_draws = 500,
+  confidence.band = 0.95,
+  mc.cores = parallel::detectCores() - 1
+)
 
 ci_model2 <- bootstrap_irf(rural_model,
-                           typeof_irf = "OIRF", 
-                           n.ahead = 10,
-                           nof_Nstar_draws = 500,
-                           confidence.band = 0.95,
-                           mc.cores = parallel::detectCores() - 1)
+  typeof_irf = "OIRF",
+  n.ahead = 10,
+  nof_Nstar_draws = 500,
+  confidence.band = 0.95,
+  mc.cores = parallel::detectCores() - 1
+)
 
 # Compare IRFs with confidence intervals
-compare_irfs(irf_model1, irf_model2, 
-             shock_var = "price",
-             response_var = "consumption",
-             model1_ci = ci_model1,
-             model2_ci = ci_model2,
-             model1_name = "Urban",
-             model2_name = "Rural")
+compare_irfs(irf_model1, irf_model2,
+  shock_var = "price",
+  response_var = "consumption",
+  model1_ci = ci_model1,
+  model2_ci = ci_model2,
+  model1_name = "Urban",
+  model2_name = "Rural"
+)
 
-compare_irfs(irf_model1, irf_model2, 
-             shock_var = "volatility",
-             response_var = "consumption",
-             model1_ci = ci_model1,
-             model2_ci = ci_model2,
-             model1_name = "Urban",
-             model2_name = "Rural")
+compare_irfs(irf_model1, irf_model2,
+  shock_var = "volatility",
+  response_var = "consumption",
+  model1_ci = ci_model1,
+  model2_ci = ci_model2,
+  model1_name = "Urban",
+  model2_name = "Rural"
+)
 
 
 ## GMM Estimation ====
@@ -252,23 +267,9 @@ compare_irfs(irf_model1, irf_model2,
 ### Functions ----
 
 # Modified GMM estimation function with more detailed error handling
-estimate_gmm_pvar <- function(data, rural_urban_group = NULL) {
-  # If group is specified, filter data
-  if (!is.null(rural_urban_group)) {
-    data <- data[data$rural_urban == rural_urban_group,]
-  }
+estimate_gmm_pvar <- function(model_data, rural_urban_group = NULL) {
+  # Previous data preparation code remains the same
   
-  # Keep only variables needed for the model
-  model_data <- data %>%
-    select(id, year, volatility, price, consumption)
-  
-  # Print dimensions for debugging
-  print(paste("Dimensions of data for", 
-              ifelse(is.null(rural_urban_group), "all areas", rural_urban_group)))
-  print(paste("N =", length(unique(model_data$id))))
-  print(paste("T =", length(unique(model_data$year))))
-  
-  # Estimate panel VAR with GMM - more conservative settings
   tryCatch({
     model <- pvargmm(
       dependent_vars = c("volatility", "price", "consumption"),
@@ -278,12 +279,24 @@ estimate_gmm_pvar <- function(data, rural_urban_group = NULL) {
       panel_identifier = c("id", "year"),
       steps = "twostep",
       system_instruments = FALSE,
-      collapse = TRUE,
-      max_instr_dependent_vars = 2, 
+      max_instr_dependent_vars = 99,
       min_instr_dependent_vars = 2L,
-      tol = 1e-07
+      collapse = FALSE
     )
+    
+    # Add lag selection criteria
+    print("\nLag Selection Criteria:")
+    print(Andrews_Lu_MMSC(model))
+    
+    # Add impulse response analysis
+    print("\nGeneralized Impulse Responses:")
+    girf_result <- girf(model, n.ahead = 8, ma_approx_steps = 8)
+    print(girf_result)
+    
+    # Previous diagnostic prints remain the same
+    
     return(model)
+    
   }, error = function(e) {
     message("Error in GMM model estimation: ", e$message)
     return(NULL)
@@ -296,37 +309,74 @@ calculate_irfs <- function(model, n.ahead = 10, bootstrap = FALSE) {
     message("Model is NULL, cannot calculate IRFs")
     return(NULL)
   }
-  
+
   # First try to calculate basic IRFs
-  tryCatch({
-    irf_results <- oirf(model, n.ahead = n.ahead)
-    
-    if (!bootstrap) {
-      return(list(irf = irf_results, ci = NULL))
+  tryCatch(
+    {
+      irf_results <- oirf(model, n.ahead = n.ahead)
+
+      if (!bootstrap) {
+        return(list(irf = irf_results, ci = NULL))
+      }
+
+      # If bootstrap requested, try with minimal settings first
+      ci_results <- bootstrap_irf(model,
+        typeof_irf = "OIRF",
+        n.ahead = n.ahead,
+        nof_Nstar_draws = 50, # Reduced number of draws
+        confidence.band = 0.95,
+        mc.cores = 1
+      ) # Single core for testing
+
+      return(list(irf = irf_results, ci = ci_results))
+    },
+    error = function(e) {
+      message("Error in IRF calculation: ", e$message)
+      return(NULL)
     }
-    
-    # If bootstrap requested, try with minimal settings first
-    ci_results <- bootstrap_irf(model, 
-                                typeof_irf = "OIRF",
-                                n.ahead = n.ahead,
-                                nof_Nstar_draws = 50,  # Reduced number of draws
-                                confidence.band = 0.95,
-                                mc.cores = 1)  # Single core for testing
-    
-    return(list(irf = irf_results, ci = ci_results))
-    
-  }, error = function(e) {
-    message("Error in IRF calculation: ", e$message)
-    return(NULL)
-  })
+  )
 }
 
 ### Execution Block ----
 
+# Create a modified dataset with integer IDs
+pvar_data_int <- pvar_data %>%
+  mutate(id_int = as.integer(factor(id))) %>% # Create integer ID
+  select(-id) %>% # Remove old ID
+  rename(id = id_int) # Rename new ID to 'id'
+
 # Estimate models
-gmm_all_areas <- estimate_gmm_pvar(pvar_data)
-gmm_urban <- estimate_gmm_pvar(pvar_data, "Predominantly Urban")
-gmm_rural <- estimate_gmm_pvar(pvar_data, "Predominantly Rural")
+gmm_all_areas <- estimate_gmm_pvar(pvar_data_int)
+gmm_urban <- estimate_gmm_pvar(pvar_data_int, "Predominantly Urban")
+gmm_rural <- estimate_gmm_pvar(pvar_data_int, "Predominantly Rural")
+
+summary(pvar_data_int)
+
+stability(gmm_all_areas)
+
+Andrews_Lu_MMSC(gmm_all_areas)
+Andrews_Lu_MMSC(gmm_urban)
+Andrews_Lu_MMSC(gmm_rural)
+
+
+cor_matrix <- pvar_data_int %>%
+  select(volatility, price, consumption) %>%
+  cor(use = "complete.obs")
+print(cor_matrix)
+
+# Diagnostic checks
+print("Panel Structure Check:")
+print(pdim(pvar_data)) # This should show your N and T dimensions
+
+print("Model Diagnostics:")
+print(paste("Number of groups:", length(unique(pvar_data$id))))
+print(paste("Time periods:", length(unique(pvar_data$year))))
+print(paste("Number of instruments:", length(gmm_all_areas$instruments)))
+
+# Hansen test
+print("Hansen J-test:")
+print(hansen_j_test(gmm_all_areas))
+
 
 # Calculate IRFs - first without bootstrap to check basic functionality
 irfs_all <- calculate_irfs(gmm_all_areas, n.ahead = 10, bootstrap = FALSE)
@@ -353,44 +403,85 @@ if (!is.null(irfs_rural$irf)) {
 # Price Shock
 if (!is.null(irfs_urban$irf) && !is.null(irfs_rural$irf)) {
   # For basic IRFs without confidence intervals
-  compare_irfs(irfs_urban$irf, irfs_rural$irf, 
-               shock_var = "price",
-               response_var = "consumption",
-               model1_name = "Urban",
-               model2_name = "Rural")
-  
+  compare_irfs(irfs_urban$irf, irfs_rural$irf,
+    shock_var = "price",
+    response_var = "consumption",
+    model1_name = "Urban",
+    model2_name = "Rural"
+  )
+
   # If we have bootstrap results, create plots with confidence intervals
   if (!is.null(irfs_urban$ci) && !is.null(irfs_rural$ci)) {
-    compare_irfs(irfs_urban$irf, irfs_rural$irf, 
-                 shock_var = "price",
-                 response_var = "consumption",
-                 model1_ci = irfs_urban$ci,
-                 model2_ci = irfs_rural$ci,
-                 model1_name = "Urban",
-                 model2_name = "Rural")
+    compare_irfs(irfs_urban$irf, irfs_rural$irf,
+      shock_var = "price",
+      response_var = "consumption",
+      model1_ci = irfs_urban$ci,
+      model2_ci = irfs_rural$ci,
+      model1_name = "Urban",
+      model2_name = "Rural"
+    )
   }
 }
 
 # Volatility Shock
 if (!is.null(irfs_urban$irf) && !is.null(irfs_rural$irf)) {
   # For basic IRFs without confidence intervals
-  compare_irfs(irfs_urban$irf, irfs_rural$irf, 
-               shock_var = "volatility",
-               response_var = "consumption",
-               model1_name = "Urban",
-               model2_name = "Rural")
-  
+  compare_irfs(irfs_urban$irf, irfs_rural$irf,
+    shock_var = "volatility",
+    response_var = "consumption",
+    model1_name = "Urban",
+    model2_name = "Rural"
+  )
+
   # If we have bootstrap results, create plots with confidence intervals
   if (!is.null(irfs_urban$ci) && !is.null(irfs_rural$ci)) {
-    compare_irfs(irfs_urban$irf, irfs_rural$irf, 
-                 shock_var = "volatility",
-                 response_var = "consumption",
-                 model1_ci = irfs_urban$ci,
-                 model2_ci = irfs_rural$ci,
-                 model1_name = "Urban",
-                 model2_name = "Rural")
+    compare_irfs(irfs_urban$irf, irfs_rural$irf,
+      shock_var = "volatility",
+      response_var = "consumption",
+      model1_ci = irfs_urban$ci,
+      model2_ci = irfs_rural$ci,
+      model1_name = "Urban",
+      model2_name = "Rural"
+    )
   }
 }
 
 
 
+
+# LETS JUST WORK SOME THINGS OUT ----
+
+model <- pvargmm(
+  # All variables are dependent, ordered for Cholesky decomposition
+  dependent_vars = c("volatility", "price", "consumption"),
+  
+  # Start with 1 lag (you can test more with model selection criteria)
+  lags = 1,
+  
+  # Data specification
+  transformation = "fd",  # First difference transformation
+  data = pvar_data,
+  panel_identifier = c("id", "year"),
+  
+  # GMM settings
+  steps = "twostep",
+  system_instruments = TRUE,
+  
+  # Instrument settings
+  # max_instr_dependent_vars = 99, # Promising, but reducing for now...
+  max_instr_dependent_vars = 4,
+  min_instr_dependent_vars = 2L,
+  collapse = TRUE
+)
+
+
+# Basic summary
+summary(model)
+
+# Check model stability
+stability_check <- stability(model)
+print(stability_check)
+plot(stability_check)
+
+# Hansen test for instrument validity
+hansen_j_test(model)
