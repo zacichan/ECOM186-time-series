@@ -656,46 +656,100 @@ for(i in seq_along(successful_models)) {
 
 ### Estimation Table ----
 
-# Extract results from all successful models
+# Extract results with detailed calculation steps
 results_table <- map_dfr(names(successful_models), function(model_name) {
   model_obj <- successful_models[[model_name]]
   if (!model_obj$success) return(NULL)
-  extract_model_results(model_obj, model_name)
-})
+  
+  # Get base results
+  base_results <- extract_model_results(model_obj, model_name)
+  
+  # Get relevant statistics for calculations
+  rural_urban_cat <- if(is.null(model_obj$rural_urban)) "Total Sample" else model_obj$rural_urban
+  sector <- str_extract(model_name, "^[^_]+")
+  
+  relevant_stats <- series_stats %>% 
+    filter(rural_urban_3 == rural_urban_cat)
+  
+  # Get standard deviations for the relevant sector
+  sd_cons <- if(sector == "domestic") relevant_stats$sd_domestic_cons else relevant_stats$sd_industrial_cons
+  sd_price <- if(sector == "domestic") relevant_stats$sd_domestic_price else relevant_stats$sd_industrial_price
+  sd_vol <- if(sector == "domestic") relevant_stats$sd_domestic_vol else relevant_stats$sd_industrial_vol
+  
+  # Calculate detailed results
+  base_results %>%
+    mutate(
+      # Original standardized coefficients
+      price_orig = price_effect,
+      price_orig_se = price_se,
+      vol_orig = volatility_effect,
+      vol_orig_se = volatility_se,
+      
+      # Standard deviations for scaling
+      sd_cons = sd_cons,
+      sd_price = sd_price,
+      sd_vol = sd_vol,
+      
+      # Final calculated effects
+      price_elasticity = price_effect * (sd_cons / sd_price) * 100,
+      price_elasticity_se = price_se * (sd_cons / sd_price) * 100,
+      
+      vol_unit_effect = volatility_effect * ( sd_cons / sd_vol ) * 100,
+      vol_unit_se = volatility_se * ( sd_cons / sd_vol ) * 100
+    )
+}) 
 
 # Calculate p-values and add significance stars
 results_table <- results_table %>%
   mutate(
-    price_p = 2 * (1 - pnorm(abs(price_effect/price_se))),
-    volatility_p = 2 * (1 - pnorm(abs(volatility_effect/volatility_se))),
+    price_p = 2 * (1 - pnorm(abs(price_elasticity/price_elasticity_se))),
+    vol_p = 2 * (1 - pnorm(abs(vol_unit_effect/vol_unit_se))),
     persistence_p = 2 * (1 - pnorm(abs(persistence/persistence_se))),
     
     price_stars = map_chr(price_p, add_stars),
-    volatility_stars = map_chr(volatility_p, add_stars),
+    vol_stars = map_chr(vol_p, add_stars),
     persistence_stars = map_chr(persistence_p, add_stars)
   )
 
 # Format results for presentation
 formatted_results <- results_table %>%
   mutate(
-    # Format coefficients with standard errors and stars
-    price_coef = sprintf("%.3f%s\n(%.3f)", price_effect, price_stars, price_se),
-    volatility_coef = sprintf("%.3f%s\n(%.3f)", volatility_effect, volatility_stars, volatility_se),
-    persistence_coef = sprintf("%.3f%s\n(%.3f)", persistence, persistence_stars, persistence_se),
+    # Format original coefficients
+    price_orig_coef = sprintf("%.4f%s\n(%.4f)", price_orig, price_stars, price_orig_se),
+    vol_orig_coef = sprintf("%.4f%s\n(%.4f)", vol_orig, vol_stars, vol_orig_se),
     
-    # Format model statistics
+    # Format standard deviations with 3 significant figures
+    price_sd_format = signif(sd_price, 3),
+    vol_sd_format = signif(sd_vol, 3),
+    cons_sd_format = signif(sd_cons, 3),
+    
+    # Format final effects (without stars and SE)
+    price_elasticity_format = sprintf("%.2f", price_elasticity),
+    vol_effect_format = sprintf("%.2f", vol_unit_effect),
+    
+    # Format persistence
+    persistence_format = sprintf("%.3f%s\n(%.3f)", persistence, persistence_stars, persistence_se),
+    
+    # Format sample size
     sample_size = sprintf("%d\n[%d]", n_obs, n_groups)
   ) %>%
   select(
     sector,
     area_type,
-    price_coef,
-    volatility_coef,
-    persistence_coef,
+    # Price response components
+    price_orig_coef,
+    price_sd_format,
+    price_elasticity_format,
+    # Volatility response components
+    vol_orig_coef,
+    vol_sd_format,
+    vol_effect_format,
+    # Other statistics
+    persistence_format,
     sample_size
   )
 
-# Create table with kableExtra if available
+# Create detailed table with kableExtra
 if (requireNamespace("kableExtra", quietly = TRUE)) {
   library(kableExtra)
   
@@ -704,24 +758,50 @@ if (requireNamespace("kableExtra", quietly = TRUE)) {
       col.names = c(
         "Sector",
         "Area Type",
-        "Price Effect",
-        "Volatility Effect",
+        "Original Coef.",
+        "Price SD",
+        "Elasticity (%)",
+        "Original Coef.",
+        "Vol SD",
+        "Effect (%)",
         "Persistence",
         "N [Groups]"
       ),
-      caption = "Panel VAR Results Across Sectors and Area Types",
-      align = c("l", "l", "c", "c", "c", "c"),
+      caption = paste(
+        "Panel VAR Results"
+      ),
+      align = c("l", "l", "c", "c", "c", "c", "c", "c", "c", "c"),
       escape = FALSE
     ) %>%
     kable_styling(full_width = FALSE) %>%
-    add_header_above(c(" " = 2, "Coefficients" = 3, "Model Statistics" = 1)) %>%
+    add_header_above(c(
+      " " = 2, 
+      "Price Response" = 3,
+      "Volatility Response" = 3,
+      "Other" = 2
+    )) %>%
     footnote(
-      general = "Standard errors in parentheses",
+      general = paste(
+        "Calculation methodology:",
+        "1. Coefficients are estimated using forward orthogonal deviations (FOD) with a two-step GMM estimator.",
+        "2. Price elasticity = (Original coef.) × (Consumption SD / Price SD) × 100, representing the % change in consumption for a 1% increase in price.",
+        "3. Volatility effect = (Original coef.) × (Consumption SD / Volatility SD) × 100, representing the % change in consumption for a 1% increase in market volatility.",
+        "\nTransformation and Estimation:",
+        "- Forward orthogonal deviations (FOD) remove fixed effects while preserving sample size, improving efficiency over first-differences.",
+        "- Standardisation ensures numerical stability, preventing scale differences from distorting coefficient estimates.",
+        "- The GMM estimator corrects for endogeneity by using lagged instruments, ensuring consistent estimation of dynamic relationships.",
+        "\nInterpretation of Coefficients:",
+        "- Price Elasticity: Measures how much consumption changes (%) in response to a 1% increase in price. A negative coefficient indicates that higher prices reduce consumption.",
+        "- Volatility Effect: Measures how much consumption changes (%) in response to a 1% increase in price volatility. A negative coefficient suggests that greater uncertainty leads to lower consumption.",
+        "- Persistence: The AR(1) coefficient for consumption, indicating how much past consumption influences current consumption. A value close to 1 suggests strong habit persistence.",
+        sep = "\n"
+      ),
       symbol = c(
         "*** p < 0.01; ** p < 0.05; * p < 0.1",
-        "Price and volatility effects show impact on consumption"
+        "Standard errors in parentheses"
       )
     )
+  
 } else {
   # Simple print if kableExtra not available
   print(formatted_results)
